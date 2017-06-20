@@ -16,11 +16,13 @@ class PowerDnsBaseProvider(BaseProvider):
     SUPPORTS_GEO = False
     TIMEOUT = 5
 
-    def __init__(self, id, host, api_key, port=8081, *args, **kwargs):
+    def __init__(self, id, host, api_key, port=8081, tls=False,
+                 *args, **kwargs):
         super(PowerDnsBaseProvider, self).__init__(id, *args, **kwargs)
 
         self.host = host
         self.port = port
+        self.tls = tls
 
         sess = Session()
         sess.headers.update({'X-API-Key': api_key})
@@ -29,8 +31,9 @@ class PowerDnsBaseProvider(BaseProvider):
     def _request(self, method, path, data=None):
         self.log.debug('_request: method=%s, path=%s', method, path)
 
-        url = 'http://{}:{}/api/v1/servers/localhost/{}' \
-            .format(self.host, self.port, path)
+        scheme = 'https' if self.tls else 'http'
+        url = '{}://{}:{}/api/v1/servers/localhost/{}' \
+            .format(scheme, self.host, self.port, path)
         resp = self._sess.request(method, url, json=data, timeout=self.TIMEOUT)
         self.log.debug('_request:   status=%d', resp.status_code)
         resp.raise_for_status()
@@ -350,6 +353,8 @@ class PowerDnsProvider(PowerDnsBaseProvider):
         api_key: api-key
         # The port on which PowerDNS api is listening (optional, default 8081)
         port: 8081
+        # Whether to use TLS encryption (optional, default no)
+        tls: yes
         # The nameservers to use for this provider (optional,
         #   default unmanaged)
         nameserver_values:
@@ -359,14 +364,15 @@ class PowerDnsProvider(PowerDnsBaseProvider):
         nameserver_ttl: 600
     '''
 
-    def __init__(self, id, host, api_key, port=8081, nameserver_values=None,
-                 nameserver_ttl=600, *args, **kwargs):
+    def __init__(self, id, host, api_key, port=8081, tls=False,
+                 nameserver_values=None, nameserver_ttl=600, *args, **kwargs):
         self.log = logging.getLogger('PowerDnsProvider[{}]'.format(id))
         self.log.debug('__init__: id=%s, host=%s, port=%d, '
                        'nameserver_values=%s, nameserver_ttl=%d',
                        id, host, port, nameserver_values, nameserver_ttl)
         super(PowerDnsProvider, self).__init__(id, host=host, api_key=api_key,
-                                               port=port, *args, **kwargs)
+                                               port=port, tls=tls, *args,
+                                               **kwargs)
 
         self.nameserver_values = nameserver_values
         self.nameserver_ttl = nameserver_ttl

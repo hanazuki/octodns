@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function, \
 
 from json import loads, dumps
 from os.path import dirname, join
+import re
 from requests import HTTPError
 from requests_mock import ANY, mock as requests_mock
 from unittest import TestCase
@@ -289,3 +290,15 @@ class TestPowerDnsProvider(TestCase):
 
             plan = provider.plan(expected)
             self.assertEquals(1, len(plan.changes))
+
+    def test_tls(self):
+        provider = PowerDnsProvider('test', 'non.existant', 'api-key',
+                                    tls=True, port=443)
+
+        # Connects over HTTPS
+        with requests_mock() as mock:
+            mock.get(re.compile('\Ahttps://non\.existant:443/'),
+                     status_code=200, text=FULL_TEXT)
+
+            zone = Zone('unit.tests.', [])
+            provider.populate(zone)
